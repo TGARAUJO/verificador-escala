@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Verificador de Escala — RH</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -204,8 +204,10 @@
 
     /* ── Main area ─────────────────────────────────── */
     .main {
-      padding: 32px 36px;
+      padding: 24px 28px;
       overflow-y: auto;
+      overflow-x: hidden;
+      min-width: 0;
     }
 
     .main-header {
@@ -277,8 +279,9 @@
     .cal-wrap {
       background: var(--bg-card);
       border-radius: var(--radius-lg);
-      padding: 20px;
+      padding: 16px;
       border: 1px solid var(--border);
+      overflow: hidden;
     }
     .cal-days-row {
       display: grid;
@@ -297,22 +300,37 @@
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
     .cal-cell {
       text-align: center;
-      padding: 7px 2px;
+      padding: 5px 2px 4px;
       border-radius: 8px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 12px;
       border: 1px solid transparent;
       transition: background .12s;
       user-select: none;
-      min-height: 38px;
+      height: 56px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
     }
     .cal-cell:hover:not(.sel) { background: rgba(232,201,122,.1) !important; }
     .cal-cell.today:not(.sel) { color: var(--gold); font-weight: 700; }
     .cal-cell.sel  { background: var(--gold) !important; border-color: var(--gold) !important; color: #1a1f2e !important; font-weight: 700; }
     .cal-cell.on   { background: var(--green-bg); border-color: var(--green-bd); }
-    .cal-dots { display: flex; justify-content: center; gap: 2px; margin-top: 2px; }
+    .cal-dots {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 2px;
+      margin-top: 2px;
+      max-height: 18px;
+      overflow: hidden;
+      width: 100%;
+      padding: 0 2px;
+    }
     .cal-dot {
-      width: 5px; height: 5px; border-radius: 50%;
+      width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0;
     }
     .cal-dot.on     { background: var(--green); }
     .cal-dot.on-sel { background: #1a1f2e; }
@@ -892,9 +910,27 @@
     setDbStatus('loading', 'Conectando…');
     document.getElementById('configError').style.display = 'none';
 
+    // Detecta abertura via file://
+    if (location.protocol === 'file:') {
+      supabaseClient = null;
+      setDbStatus('error', 'Modo local (sem banco)');
+      const aviso = 'Arquivo aberto via file://. Para conectar ao Supabase, hospede em um servidor HTTP (ex: VS Code Live Server, http-server, ou acesse via claude.ai/artifacts).';
+      mostrarErroConfig(aviso);
+      if (!silent) toast('⚠️ ' + aviso, 'info', 7000);
+      await carregarColaboradores();
+      return false;
+    }
+
     try {
-      supabaseClient = supabase.createClient(url, key);
-      const { error } = await supabaseClient.from('colaboradores').select('id').limit(1);
+      supabaseClient = supabase.createClient(url, key, {
+        auth: { persistSession: false }
+      });
+
+      const { data, error } = await supabaseClient
+        .from('colaboradores')
+        .select('id')
+        .limit(1);
+
       if (error) throw new Error(error.message);
 
       localStorage.setItem(SUPABASE_URL_KEY, url);
@@ -906,7 +942,12 @@
     } catch (err) {
       supabaseClient = null;
       setDbStatus('error', 'Erro de conexão');
-      mostrarErroConfig('Falha ao conectar: ' + err.message);
+      const msg = err.name === 'DataCloneError'
+        ? 'Erro de contexto (DataCloneError). Abra via servidor HTTP, não pelo explorador de arquivos.'
+        : 'Falha ao conectar: ' + err.message;
+      mostrarErroConfig(msg);
+      if (!silent) toast(msg, 'error', 6000);
+      await carregarColaboradores();
       return false;
     }
   }

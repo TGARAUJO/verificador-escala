@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Verificador de Escala — RH</title>
+  <link rel="manifest" href="manifest.json"/>
+  <meta name="theme-color" content="#1a5fa8"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Escala RH"/>
+  <link rel="apple-touch-icon" href="icon-192.png"/>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 
@@ -613,9 +619,134 @@
     }
 
     .hidden { display: none !important; }
+
+    /* ── Login Screen ─────────────────────────────── */
+    .login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1a5fa8 0%, #0d2a4a 100%);
+    }
+    .login-card {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .login-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      color: #1a5fa8;
+      text-align: center;
+      margin-bottom: 4px;
+      line-height: 1.2;
+    }
+    .login-logo em { color: #5ba3d9; }
+    .login-subtitle {
+      text-align: center;
+      font-size: 12px;
+      color: #4a6f99;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+    .login-tabs {
+      display: flex;
+      border-radius: 10px;
+      background: #f0f4fa;
+      padding: 4px;
+      margin-bottom: 24px;
+      gap: 4px;
+    }
+    .login-tab {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: none;
+      color: #4a6f99;
+      transition: background .15s, color .15s;
+    }
+    .login-tab.active {
+      background: #1a5fa8;
+      color: #ffffff;
+    }
+    .login-error {
+      background: #fff0f0;
+      border: 1px solid #ffc5c5;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #d93025;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .login-success {
+      background: #f0fff6;
+      border: 1px solid #b2f0cc;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #1a7a45;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: #1a5fa8;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background .15s, transform .1s;
+    }
+    .login-btn:hover { background: #2474c7; transform: translateY(-1px); }
+    .login-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
   </style>
 </head>
 <body>
+
+<!-- ── Login Screen ── -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <div class="login-logo">Verificador<br><em>de Escala</em></div>
+    <div class="login-subtitle">Recursos Humanos</div>
+
+    <div class="login-tabs">
+      <button class="login-tab active" id="tabEntrar" onclick="switchLoginTab('entrar')">Entrar</button>
+      <button class="login-tab" id="tabCriar" onclick="switchLoginTab('criar')">Criar conta</button>
+    </div>
+
+    <div id="loginError" class="login-error"></div>
+    <div id="loginSuccess" class="login-success"></div>
+
+    <div class="form-group">
+      <label class="form-label" style="color:#0d2a4a;">E-mail</label>
+      <input class="form-input" type="email" id="loginEmail" placeholder="seu@email.com" style="background:#f0f4fa;color:#0d2a4a;border-color:#c5d5ea;" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label" style="color:#0d2a4a;">Senha</label>
+      <input class="form-input" type="password" id="loginSenha" placeholder="••••••••" style="background:#f0f4fa;color:#0d2a4a;border-color:#c5d5ea;" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="form-group" id="loginConfirmGroup" style="display:none;">
+      <label class="form-label" style="color:#0d2a4a;">Confirmar senha</label>
+      <input class="form-input" type="password" id="loginConfirm" placeholder="••••••••" style="background:#f0f4fa;color:#0d2a4a;border-color:#c5d5ea;" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
+  </div>
+</div>
+
 
 <!-- Toast container -->
 <div class="toast-container" id="toastContainer"></div>
@@ -836,6 +967,12 @@
   const SUPABASE_KEY_FIXED = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0YXR1aW91Ynp0bHlsaGlvdmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMTM2NjMsImV4cCI6MjA5NDc4OTY2M30.v4XUcr3HqsVUTpx83f9iBPwwVqaweQ7Xlq81A70L1f4';
   const SUPABASE_URL_KEY   = 'escala_supabase_url';
   const SUPABASE_KEY_KEY   = 'escala_supabase_key';
+
+  // ── E-mails autorizados ── adicione ou remova e-mails aqui ──
+  const EMAILS_AUTORIZADOS = [
+    'tulio.araujo.guedes@gmail.com',
+    // 'outro@email.com',     // descomente e edite para adicionar mais
+  ];
 
   const MONTHS   = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const DAYS     = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
@@ -1388,6 +1525,115 @@
     if (cfgKey) cfgKey.value = SUPABASE_KEY_FIXED;
     await conectarSupabase(true);
   })();
+  // ── Autenticação ───────────────────────────────────────────────
+  let loginTab = 'entrar';
+
+  function switchLoginTab(tab) {
+    loginTab = tab;
+    document.getElementById('tabEntrar').classList.toggle('active', tab === 'entrar');
+    document.getElementById('tabCriar').classList.toggle('active', tab === 'criar');
+    document.getElementById('loginConfirmGroup').style.display = tab === 'criar' ? '' : 'none';
+    document.getElementById('loginBtn').textContent = tab === 'entrar' ? 'Entrar' : 'Criar conta';
+    document.getElementById('loginError').style.display = 'none';
+    document.getElementById('loginSuccess').style.display = 'none';
+  }
+
+  function showLoginError(msg) {
+    const el = document.getElementById('loginError');
+    el.textContent = msg; el.style.display = '';
+    document.getElementById('loginSuccess').style.display = 'none';
+  }
+  function showLoginSuccess(msg) {
+    const el = document.getElementById('loginSuccess');
+    el.textContent = msg; el.style.display = '';
+    document.getElementById('loginError').style.display = 'none';
+  }
+
+  async function doLogin() {
+    const email  = document.getElementById('loginEmail').value.trim();
+    const senha  = document.getElementById('loginSenha').value;
+    const confirma = document.getElementById('loginConfirm').value;
+    const btn    = document.getElementById('loginBtn');
+
+    if (!email || !senha) { showLoginError('Preencha e-mail e senha.'); return; }
+    if (loginTab === 'criar' && senha !== confirma) { showLoginError('As senhas não coincidem.'); return; }
+    if (loginTab === 'criar' && senha.length < 6) { showLoginError('A senha deve ter ao menos 6 caracteres.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = loginTab === 'entrar' ? 'Entrando…' : 'Criando…';
+    document.getElementById('loginError').style.display = 'none';
+
+    try {
+      // Usa o supabaseClient já configurado (ou cria temporário)
+      const client = supabase.createClient(SUPABASE_URL_FIXED, SUPABASE_KEY_FIXED, { auth: { persistSession: true } });
+
+      let result;
+      if (loginTab === 'entrar') {
+        result = await client.auth.signInWithPassword({ email, password: senha });
+      } else {
+        result = await client.auth.signUp({ email, password: senha });
+      }
+
+      if (result.error) throw result.error;
+
+      if (loginTab === 'criar' && result.data?.user && !result.data.session) {
+        showLoginSuccess('Conta criada! Verifique seu e-mail para confirmar o cadastro.');
+        btn.disabled = false;
+        btn.textContent = 'Criar conta';
+        return;
+      }
+
+      // Verifica se e-mail está autorizado
+      const emailUsuario = result.data?.user?.email || email;
+      if (!EMAILS_AUTORIZADOS.includes(emailUsuario.toLowerCase())) {
+        await supabase.createClient(SUPABASE_URL_FIXED, SUPABASE_KEY_FIXED, { auth: { persistSession: true } }).auth.signOut();
+        showLoginError('Acesso não autorizado. Entre em contato com o administrador.');
+        btn.disabled = false;
+        btn.textContent = loginTab === 'entrar' ? 'Entrar' : 'Criar conta';
+        return;
+      }
+
+      // Sucesso — mostra o app
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appShell').style.display = '';
+      await conectarSupabase(true);
+
+    } catch (err) {
+      const msgs = {
+        'Invalid login credentials': 'E-mail ou senha incorretos.',
+        'User already registered': 'Este e-mail já possui uma conta. Faça login.',
+        'Email not confirmed': 'Confirme seu e-mail antes de entrar.',
+      };
+      showLoginError(msgs[err.message] || err.message);
+      btn.disabled = false;
+      btn.textContent = loginTab === 'entrar' ? 'Entrar' : 'Criar conta';
+    }
+  }
+
+  // Verifica se já há sessão ativa ao carregar
+  (async function checkSession() {
+    try {
+      const client = supabase.createClient(SUPABASE_URL_FIXED, SUPABASE_KEY_FIXED, { auth: { persistSession: true } });
+      const { data } = await client.auth.getSession();
+      if (data?.session) {
+        const emailSessao = data.session.user?.email || '';
+        if (EMAILS_AUTORIZADOS.includes(emailSessao.toLowerCase())) {
+          document.getElementById('loginScreen').style.display = 'none';
+          document.getElementById('appShell').style.display = '';
+        } else {
+          await client.auth.signOut();
+        }
+      }
+    } catch(e) {}
+  })();
+
+  // ── Service Worker (PWA) ───────────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+
 </script>
 </body>
 </html>

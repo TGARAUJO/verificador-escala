@@ -4,11 +4,7 @@
   const SUPABASE_URL_KEY   = 'escala_supabase_url';
   const SUPABASE_KEY_KEY   = 'escala_supabase_key';
 
-  // ── E-mails autorizados ── adicione ou remova e-mails aqui ──
-  const EMAILS_AUTORIZADOS = [
-    'tulio.araujo.guedes@gmail.com',   // substitua pelo seu e-mail
-    // 'outro@email.com',     // descomente e edite para adicionar mais
-  ];
+  
 
   const MONTHS   = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const DAYS     = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
@@ -677,12 +673,20 @@
         return;
       }
 
-      // Verifica se e-mail está na lista de autorizados
+     // [NOVO] Verifica se e-mail está na tabela do Supabase em tempo real
       const emailUsuario = (result.data?.user?.email || email).toLowerCase();
-      if (!EMAILS_AUTORIZADOS.includes(emailUsuario)) {
+      
+      const { data: usuarioFiltro, error: erroBanco } = await client
+        .from('usuarios_autorizados')
+        .select('email')
+        .eq('email', emailUsuario)
+        .maybeSingle();
+
+      if (erroBanco || !usuarioFiltro) {
         await client.auth.signOut();
         showLoginError('❌ Acesso não autorizado. Entre em contato com o administrador.');
-        btn.disabled = false; btn.textContent = 'Entrar';
+        btn.disabled = false; 
+        btn.textContent = 'Entrar';
         return;
       }
 
@@ -726,10 +730,19 @@
       const client = supabase.createClient(SUPABASE_URL_FIXED, SUPABASE_KEY_FIXED, { auth: { persistSession: true } });
       const { data } = await client.auth.getSession();
       if (data?.session) {
-        const emailSessao = data.session.user?.email || '';
-        if (EMAILS_AUTORIZADOS.includes(emailSessao.toLowerCase())) {
+        const emailSessao = (data.session.user?.email || '').toLowerCase();
+        
+        // [NOVO] Valida a sessão ativa contra a tabela do banco
+        const { data: usuarioFiltro } = await client
+          .from('usuarios_autorizados')
+          .select('email')
+          .eq('email', emailSessao)
+          .maybeSingle();
+
+        if (usuarioFiltro) {
           document.getElementById('loginScreen').style.display = 'none';
           document.getElementById('appShell').style.display = '';
+          await conectarSupabase(true); // Conecta aos dados da escala
         } else {
           await client.auth.signOut();
         }

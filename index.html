@@ -722,7 +722,7 @@
     <div class="login-logo">Verificador<br><em>de Escala</em></div>
     <div class="login-subtitle">Recursos Humanos</div>
 
-    <div class="login-tabs">
+    <div class="login-tabs" id="loginTabsRow">
       <button class="login-tab active" id="tabEntrar" onclick="switchLoginTab('entrar')">Entrar</button>
       <button class="login-tab" id="tabCriar" onclick="switchLoginTab('criar')">Criar conta</button>
     </div>
@@ -730,20 +730,38 @@
     <div id="loginError" class="login-error"></div>
     <div id="loginSuccess" class="login-success"></div>
 
-    <div class="form-group">
-      <label class="form-label" style="color:#0d2a4a;">E-mail</label>
-      <input class="form-input" type="email" id="loginEmail" placeholder="seu@email.com" style="background:#f0f4fa;color:#0d2a4a;border-color:#c5d5ea;" onkeydown="if(event.key==='Enter')doLogin()"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label" style="color:#0d2a4a;">Senha</label>
-      <input class="form-input" type="password" id="loginSenha" placeholder="••••••••" style="background:#f0f4fa;color:#0d2a4a;border-color:#c5d5ea;" onkeydown="if(event.key==='Enter')doLogin()"/>
-    </div>
-    <div class="form-group" id="loginConfirmGroup" style="display:none;">
-      <label class="form-label" style="color:#0d2a4a;">Confirmar senha</label>
-      <input class="form-input" type="password" id="loginConfirm" placeholder="••••••••" style="background:#f0f4fa;color:#0d2a4a;border-color:#c5d5ea;" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <!-- Painel principal (entrar / criar conta) -->
+    <div id="loginMainPanel">
+      <div class="form-group">
+        <label class="form-label" style="color:#0d2a4a;">E-mail</label>
+        <input class="form-input" type="email" id="loginEmail" placeholder="seu@email.com" style="background:#f0f4fa;color:#0d2a4a;border-color:#c5d5ea;" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="color:#0d2a4a;">Senha</label>
+        <input class="form-input" type="password" id="loginSenha" placeholder="••••••••" style="background:#f0f4fa;color:#0d2a4a;border-color:#c5d5ea;" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <div class="form-group" id="loginConfirmGroup" style="display:none;">
+        <label class="form-label" style="color:#0d2a4a;">Confirmar senha</label>
+        <input class="form-input" type="password" id="loginConfirm" placeholder="••••••••" style="background:#f0f4fa;color:#0d2a4a;border-color:#c5d5ea;" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <button class="login-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
+      <div style="text-align:center;margin-top:14px;">
+        <button onclick="switchLoginTab('esqueci')" style="background:none;border:none;color:#4a6f99;font-size:13px;cursor:pointer;text-decoration:underline;">Esqueci minha senha</button>
+      </div>
     </div>
 
-    <button class="login-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
+    <!-- Painel esqueci a senha -->
+    <div id="loginEsqueciPanel" style="display:none;">
+      <p style="font-size:13px;color:#4a6f99;margin-bottom:16px;text-align:center;">Digite seu e-mail e enviaremos um link para redefinir sua senha.</p>
+      <div class="form-group">
+        <label class="form-label" style="color:#0d2a4a;">E-mail</label>
+        <input class="form-input" type="email" id="loginEmailReset" placeholder="seu@email.com" style="background:#f0f4fa;color:#0d2a4a;border-color:#c5d5ea;" onkeydown="if(event.key==='Enter')doReset()"/>
+      </div>
+      <button class="login-btn" onclick="doReset()">Enviar link de redefinição</button>
+      <div style="text-align:center;margin-top:14px;">
+        <button onclick="switchLoginTab('entrar')" style="background:none;border:none;color:#4a6f99;font-size:13px;cursor:pointer;text-decoration:underline;">← Voltar ao login</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -970,7 +988,7 @@
 
   // ── E-mails autorizados ── adicione ou remova e-mails aqui ──
   const EMAILS_AUTORIZADOS = [
-    'tulio.araujo.guedes@gmail.com',
+    'seuemail@exemplo.com',   // substitua pelo seu e-mail
     // 'outro@email.com',     // descomente e edite para adicionar mais
   ];
 
@@ -1530,12 +1548,20 @@
 
   function switchLoginTab(tab) {
     loginTab = tab;
-    document.getElementById('tabEntrar').classList.toggle('active', tab === 'entrar');
-    document.getElementById('tabCriar').classList.toggle('active', tab === 'criar');
-    document.getElementById('loginConfirmGroup').style.display = tab === 'criar' ? '' : 'none';
-    document.getElementById('loginBtn').textContent = tab === 'entrar' ? 'Entrar' : 'Criar conta';
     document.getElementById('loginError').style.display = 'none';
     document.getElementById('loginSuccess').style.display = 'none';
+
+    const isEsqueci = tab === 'esqueci';
+    document.getElementById('loginTabsRow').style.display = isEsqueci ? 'none' : '';
+    document.getElementById('loginMainPanel').style.display = isEsqueci ? 'none' : '';
+    document.getElementById('loginEsqueciPanel').style.display = isEsqueci ? '' : 'none';
+
+    if (!isEsqueci) {
+      document.getElementById('tabEntrar').classList.toggle('active', tab === 'entrar');
+      document.getElementById('tabCriar').classList.toggle('active', tab === 'criar');
+      document.getElementById('loginConfirmGroup').style.display = tab === 'criar' ? '' : 'none';
+      document.getElementById('loginBtn').textContent = tab === 'entrar' ? 'Entrar' : 'Criar conta';
+    }
   }
 
   function showLoginError(msg) {
@@ -1576,8 +1602,13 @@
 
       if (result.error) throw result.error;
 
-      if (loginTab === 'criar' && result.data?.user && !result.data.session) {
-        showLoginSuccess('Conta criada! Verifique seu e-mail para confirmar o cadastro.');
+      if (loginTab === 'criar') {
+        if (result.data?.user && !result.data.session) {
+          showLoginSuccess('✅ Conta criada com sucesso! Verifique seu e-mail para confirmar o cadastro antes de entrar.');
+        } else if (result.data?.session) {
+          showLoginSuccess('✅ Conta criada com sucesso! Você já pode entrar.');
+          switchLoginTab('entrar');
+        }
         btn.disabled = false;
         btn.textContent = 'Criar conta';
         return;
@@ -1601,12 +1632,48 @@
     } catch (err) {
       const msgs = {
         'Invalid login credentials': 'E-mail ou senha incorretos.',
-        'User already registered': 'Este e-mail já possui uma conta. Faça login.',
-        'Email not confirmed': 'Confirme seu e-mail antes de entrar.',
+        'User already registered': '⚠️ Este e-mail já tem uma conta cadastrada. Clique em "Entrar" para fazer login.',
+        'Email not confirmed': '⚠️ E-mail ainda não confirmado. Verifique sua caixa de entrada (e o spam).',
+        'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres.',
+        'Unable to validate email address: invalid format': 'Digite um e-mail válido.',
       };
-      showLoginError(msgs[err.message] || err.message);
+      // Detecta e-mail duplicado também por código
+      const msgFinal = msgs[err.message] ||
+        (err.message.toLowerCase().includes('already') ? '⚠️ Este e-mail já tem uma conta. Clique em "Entrar" para fazer login.' : err.message);
+      showLoginError(msgFinal);
+      if (err.message.includes('already') || err.message === 'User already registered') {
+        switchLoginTab('entrar');
+        setTimeout(() => {
+          document.getElementById('loginEmail').value = email;
+          showLoginError('⚠️ Este e-mail já tem uma conta. Digite sua senha para entrar.');
+        }, 100);
+      }
       btn.disabled = false;
       btn.textContent = loginTab === 'entrar' ? 'Entrar' : 'Criar conta';
+    }
+  }
+
+  async function doReset() {
+    const email = document.getElementById('loginEmailReset').value.trim();
+    if (!email) { showLoginError('Digite seu e-mail.'); return; }
+
+    const btn = document.querySelector('#loginEsqueciPanel .login-btn');
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+    document.getElementById('loginError').style.display = 'none';
+
+    try {
+      const client = supabase.createClient(SUPABASE_URL_FIXED, SUPABASE_KEY_FIXED, { auth: { persistSession: false } });
+      const { error } = await client.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.href,
+      });
+      if (error) throw error;
+      showLoginSuccess('✅ Link enviado! Verifique seu e-mail (e o spam) para redefinir a senha.');
+    } catch (err) {
+      showLoginError('Erro ao enviar: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar link de redefinição';
     }
   }
 

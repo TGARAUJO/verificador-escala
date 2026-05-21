@@ -696,3 +696,42 @@
     }
     .login-btn:hover { background: #2474c7; transform: translateY(-1px); }
     .login-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+    /* ── Users table ───────────────────────────────── */
+    .users-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .users-table th {
+      text-align: left;
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .users-table td {
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .users-table tr:last-child td { border-bottom: none; }
+    .users-table tr:hover td { background: var(--green-bg); }
+    .badge-perfil {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-perfil.admin   { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold); }
+    .badge-perfil.viewer  { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }

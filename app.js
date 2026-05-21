@@ -52,12 +52,20 @@
     document.getElementById('sectionCalendar').classList.toggle('hidden', name !== 'calendar');
     document.getElementById('sectionReport').classList.toggle('hidden',   name !== 'report');
     document.getElementById('sectionConfig').classList.toggle('hidden',   name !== 'config');
+    document.getElementById('sectionUsers').classList.toggle('hidden',    name !== 'users');
+
+    // Highlight active nav button
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    const idx = { calendar: 0, report: 1, config: 2, users: 3 }[name] ?? 0;
+    const btns = document.querySelectorAll('.nav-btn');
+    if (btns[idx]) btns[idx].classList.add('active');
 
     if (name === 'report') {
       popularFiltros();
       atualizarRelatorio();
       renderMarcosRelatorio();
     }
+    if (name === 'users') carregarUtilizadores();
   }
 
   // ── Modal ─────────────────────────────────────────────────────
@@ -749,6 +757,121 @@
       }
     } catch(e) {}
   })();
+
+  // ── Gestão de Utilizadores ────────────────────────────────────
+  async function carregarUtilizadores() {
+    const container = document.getElementById('usersListContent');
+    if (!supabaseClient) {
+      container.innerHTML = '<div style="color:var(--text-faint);font-size:13px;padding:20px;text-align:center;">⚠️ Conecte ao banco de dados primeiro.</div>';
+      return;
+    }
+    container.innerHTML = '<div style="color:var(--text-faint);font-size:13px;padding:20px;text-align:center;">Carregando…</div>';
+
+    const { data, error } = await supabaseClient
+      .from('usuarios_autorizados')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      container.innerHTML = `<div style="color:var(--red);font-size:13px;padding:20px;text-align:center;">❌ Erro ao carregar: ${error.message}</div>`;
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      container.innerHTML = '<div style="color:var(--text-faint);font-size:13px;padding:20px;text-align:center;">Nenhum utilizador cadastrado ainda.</div>';
+      return;
+    }
+
+    const rows = data.map(u => {
+      const perfil = u.perfil || 'viewer';
+      const dataStr = u.created_at
+        ? new Date(u.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' })
+        : '—';
+      return `
+        <tr>
+          <td>${u.email}</td>
+          <td><span class="badge-perfil ${perfil}">${perfil === 'admin' ? 'Administrador' : 'Visualizador'}</span></td>
+          <td style="color:var(--text-dim);">${dataStr}</td>
+          <td>
+            <button class="btn btn-danger btn-sm" onclick="removerUtilizador('${u.id}', '${u.email}')">Remover</button>
+          </td>
+        </tr>`;
+    }).join('');
+
+    container.innerHTML = `
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>E-mail</th>
+            <th>Perfil</th>
+            <th>Adicionado em</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:10px;font-size:12px;color:var(--text-faint);">Total: ${data.length} utilizador(es)</div>
+    `;
+  }
+
+  async function adicionarUtilizador() {
+    const email  = document.getElementById('inputNovoEmail').value.trim().toLowerCase();
+    const perfil = document.getElementById('inputNovoPerfil').value;
+    const errEl  = document.getElementById('usersError');
+    const btn    = document.getElementById('btnAdicionarUser');
+
+    errEl.style.display = 'none';
+    if (!email) { errEl.textContent = 'Informe o e-mail.'; errEl.style.display = 'block'; return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errEl.textContent = 'Digite um e-mail válido.'; errEl.style.display = 'block'; return;
+    }
+    if (!supabaseClient) {
+      errEl.textContent = 'Conecte ao banco de dados primeiro.'; errEl.style.display = 'block'; return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Adicionando…';
+
+    // Verifica duplicado
+    const { data: existe } = await supabaseClient
+      .from('usuarios_autorizados').select('id').eq('email', email).maybeSingle();
+    if (existe) {
+      errEl.textContent = '⚠️ Este e-mail já está na lista de utilizadores.';
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = '+ Adicionar';
+      return;
+    }
+
+    const { error } = await supabaseClient
+      .from('usuarios_autorizados')
+      .insert([{ email, perfil }]);
+
+    if (error) {
+      errEl.textContent = '❌ Erro ao adicionar: ' + error.message;
+      errEl.style.display = 'block';
+    } else {
+      document.getElementById('inputNovoEmail').value = '';
+      toast(`✅ ${email} adicionado com sucesso!`, 'success');
+      await carregarUtilizadores();
+    }
+    btn.disabled = false; btn.textContent = '+ Adicionar';
+  }
+
+  async function removerUtilizador(id, email) {
+    const ok = await showConfirm('Remover utilizador?', `O acesso de "${email}" será revogado. Esta ação não pode ser desfeita.`);
+    if (!ok) return;
+
+    const { error } = await supabaseClient
+      .from('usuarios_autorizados')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast('❌ Erro ao remover: ' + error.message, 'error');
+    } else {
+      toast(`✅ ${email} removido com sucesso!`, 'success');
+      await carregarUtilizadores();
+    }
+  }
 
   // ── Service Worker (PWA) ───────────────────────────────────────
   if ('serviceWorker' in navigator) {

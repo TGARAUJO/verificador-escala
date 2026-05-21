@@ -135,6 +135,7 @@
     <button class="nav-btn" onclick="showSection('calendar')"><span class="icon">📅</span> Calendário</button>
     <button class="nav-btn" onclick="showSection('report')"><span class="icon">📄</span> Relatório</button>
     <button class="nav-btn" onclick="showSection('config')"><span class="icon">⚙️</span> Banco de Dados</button>
+    <button class="nav-btn" onclick="showSection('users')"><span class="icon">👥</span> Utilizadores</button>
 
     <div class="nav-section-label">Colaboradores</div>
     <div class="colabs-section" id="sidebarColabs">
@@ -275,6 +276,41 @@
 
       <div style="font-size:13px;font-weight:700;color:var(--gold);letter-spacing:.5px;margin-bottom:12px;text-transform:uppercase;">📋 Plantões do Mês</div>
       <div id="reportContent"></div>
+    </div>
+
+    <!-- ── Users section ───────────────────────────────────────── -->
+    <div id="sectionUsers" class="hidden">
+      <div class="main-header">
+        <div class="main-title">👥 Gestão de Utilizadores</div>
+        <button class="btn btn-ghost btn-sm" onclick="showSection('calendar')">← Voltar</button>
+      </div>
+
+      <div class="config-banner" style="margin-bottom:20px;">
+        <h2>➕ Adicionar Utilizador</h2>
+        <p>Insira o e-mail da pessoa que terá acesso ao sistema. O e-mail será salvo na tabela <code>usuarios_autorizados</code> do Supabase.</p>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="form-group" style="flex:1;min-width:220px;margin-bottom:0;">
+            <label class="form-label">E-mail do utilizador</label>
+            <input class="form-input" id="inputNovoEmail" type="email" placeholder="nome@email.com" onkeydown="if(event.key==='Enter')adicionarUtilizador()"/>
+          </div>
+          <div class="form-group" style="flex:0;margin-bottom:0;">
+            <label class="form-label">Perfil</label>
+            <select class="form-select" id="inputNovoPerfil">
+              <option value="viewer">Visualizador</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="adicionarUtilizador()" id="btnAdicionarUser">+ Adicionar</button>
+        </div>
+        <div class="config-error" id="usersError" style="margin-top:12px;"></div>
+      </div>
+
+      <div style="font-size:13px;font-weight:700;color:var(--gold);letter-spacing:.5px;margin-bottom:12px;text-transform:uppercase;">
+        📋 Utilizadores com acesso
+      </div>
+      <div id="usersListContent">
+        <div style="color:var(--text-faint);font-size:13px;padding:20px;text-align:center;">Carregando…</div>
+      </div>
     </div>
 
   </main>

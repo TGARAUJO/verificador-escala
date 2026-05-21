@@ -988,7 +988,7 @@
 
   // ── E-mails autorizados ── adicione ou remova e-mails aqui ──
   const EMAILS_AUTORIZADOS = [
-    'seuemail@exemplo.com',   // substitua pelo seu e-mail
+    'tulio.araujo.guedes@gmail.com',   // substitua pelo seu e-mail
     // 'outro@email.com',     // descomente e edite para adicionar mais
   ];
 
@@ -1575,22 +1575,51 @@
     document.getElementById('loginError').style.display = 'none';
   }
 
-  async function doLogin() {
-    const email  = document.getElementById('loginEmail').value.trim();
-    const senha  = document.getElementById('loginSenha').value;
-    const confirma = document.getElementById('loginConfirm').value;
-    const btn    = document.getElementById('loginBtn');
+  function _traduzirErroAuth(msg, email, btn) {
+    const m = (msg || '').toLowerCase();
+    let texto;
+    if (m.includes('invalid login credentials') || m.includes('invalid credentials') || m.includes('wrong password') || m.includes('invalid email or password')) {
+      texto = '❌ E-mail ou senha incorretos. Verifique e tente novamente.';
+    } else if (m.includes('email not confirmed')) {
+      texto = '⚠️ E-mail ainda não confirmado. Verifique sua caixa de entrada (e o spam).';
+    } else if (m.includes('already registered') || m.includes('user already')) {
+      switchLoginTab('entrar');
+      setTimeout(() => {
+        document.getElementById('loginEmail').value = email;
+        showLoginError('⚠️ Este e-mail já tem uma conta. Digite sua senha para entrar.');
+      }, 100);
+      btn.disabled = false; btn.textContent = 'Criar conta';
+      return;
+    } else if (m.includes('at least 6') || m.includes('should be at least')) {
+      texto = '❌ A senha deve ter pelo menos 6 caracteres.';
+    } else if (m.includes('invalid format') || m.includes('valid email')) {
+      texto = '❌ Digite um e-mail válido.';
+    } else if (m.includes('too many requests') || m.includes('rate limit')) {
+      texto = '⚠️ Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+    } else {
+      texto = '❌ Erro: ' + msg;
+    }
+    showLoginError(texto);
+    btn.disabled = false;
+    btn.textContent = loginTab === 'entrar' ? 'Entrar' : 'Criar conta';
+  }
 
-    if (!email || !senha) { showLoginError('Preencha e-mail e senha.'); return; }
-    if (loginTab === 'criar' && senha !== confirma) { showLoginError('As senhas não coincidem.'); return; }
-    if (loginTab === 'criar' && senha.length < 6) { showLoginError('A senha deve ter ao menos 6 caracteres.'); return; }
+  async function doLogin() {
+    const email    = document.getElementById('loginEmail').value.trim();
+    const senha    = document.getElementById('loginSenha').value;
+    const confirma = document.getElementById('loginConfirm').value;
+    const btn      = document.getElementById('loginBtn');
+
+    if (!email || !senha) { showLoginError('⚠️ Preencha e-mail e senha.'); return; }
+    if (loginTab === 'criar' && senha !== confirma) { showLoginError('❌ As senhas não coincidem.'); return; }
+    if (loginTab === 'criar' && senha.length < 6)   { showLoginError('❌ A senha deve ter ao menos 6 caracteres.'); return; }
 
     btn.disabled = true;
     btn.textContent = loginTab === 'entrar' ? 'Entrando…' : 'Criando…';
     document.getElementById('loginError').style.display = 'none';
+    document.getElementById('loginSuccess').style.display = 'none';
 
     try {
-      // Usa o supabaseClient já configurado (ou cria temporário)
       const client = supabase.createClient(SUPABASE_URL_FIXED, SUPABASE_KEY_FIXED, { auth: { persistSession: true } });
 
       let result;
@@ -1600,16 +1629,14 @@
         result = await client.auth.signUp({ email, password: senha });
       }
 
-      // Trata erro retornado no objeto result (sem throw)
+      // Supabase às vezes retorna erro no objeto sem lançar exceção
       if (result.error) {
-        const errMsg = result.error.message || result.error.error_description || JSON.stringify(result.error);
-        handleAuthError(errMsg, email, btn);
+        _traduzirErroAuth(result.error.message || result.error.error_description || JSON.stringify(result.error), email, btn);
         return;
       }
 
       if (loginTab === 'criar') {
-        // Supabase retorna "sucesso" silencioso para e-mails duplicados quando
-        // confirmação de e-mail está ativa: identities vem como array vazio.
+        // E-mail duplicado: Supabase retorna identities vazio em vez de erro
         const identities = result.data?.user?.identities;
         if (Array.isArray(identities) && identities.length === 0) {
           switchLoginTab('entrar');
@@ -1617,75 +1644,36 @@
             document.getElementById('loginEmail').value = email;
             showLoginError('⚠️ Este e-mail já tem uma conta. Digite sua senha para entrar.');
           }, 100);
-          btn.disabled = false;
-          btn.textContent = 'Criar conta';
+          btn.disabled = false; btn.textContent = 'Criar conta';
           return;
         }
-
         if (result.data?.user && !result.data.session) {
           showLoginSuccess('✅ Conta criada! Verifique seu e-mail para confirmar o cadastro antes de entrar.');
-        } else if (result.data?.session) {
+        } else {
           showLoginSuccess('✅ Conta criada com sucesso! Você já pode entrar.');
           switchLoginTab('entrar');
         }
-        btn.disabled = false;
-        btn.textContent = 'Criar conta';
+        btn.disabled = false; btn.textContent = 'Criar conta';
         return;
       }
 
-      // Verifica se e-mail está autorizado
-      const emailUsuario = result.data?.user?.email || email;
-      if (!EMAILS_AUTORIZADOS.includes(emailUsuario.toLowerCase())) {
-        await supabase.createClient(SUPABASE_URL_FIXED, SUPABASE_KEY_FIXED, { auth: { persistSession: true } }).auth.signOut();
+      // Verifica se e-mail está na lista de autorizados
+      const emailUsuario = (result.data?.user?.email || email).toLowerCase();
+      if (!EMAILS_AUTORIZADOS.includes(emailUsuario)) {
+        await client.auth.signOut();
         showLoginError('❌ Acesso não autorizado. Entre em contato com o administrador.');
-        btn.disabled = false;
-        btn.textContent = 'Entrar';
+        btn.disabled = false; btn.textContent = 'Entrar';
         return;
       }
 
-      // Sucesso — mostra o app
+      // ✅ Sucesso — abre o app
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('appShell').style.display = '';
       await conectarSupabase(true);
 
     } catch (err) {
-      const errMsg = err.message || err.error_description || JSON.stringify(err);
-      handleAuthError(errMsg, email, btn);
+      _traduzirErroAuth(err.message || err.error_description || JSON.stringify(err), email, btn);
     }
-  }
-
-  function handleAuthError(errMsg, email, btn) {
-    const msg = errMsg || '';
-    const msgLower = msg.toLowerCase();
-
-    let msgFinal;
-    if (msgLower.includes('invalid login credentials') || msgLower.includes('invalid credentials') || msgLower.includes('invalid email or password') || msgLower.includes('wrong password')) {
-      msgFinal = '❌ E-mail ou senha incorretos. Verifique e tente novamente.';
-    } else if (msgLower.includes('email not confirmed')) {
-      msgFinal = '⚠️ E-mail ainda não confirmado. Verifique sua caixa de entrada (e o spam).';
-    } else if (msgLower.includes('already registered') || msgLower.includes('already') || msgLower.includes('user already')) {
-      switchLoginTab('entrar');
-      setTimeout(() => {
-        document.getElementById('loginEmail').value = email;
-        showLoginError('⚠️ Este e-mail já tem uma conta. Digite sua senha para entrar.');
-      }, 100);
-      btn.disabled = false;
-      btn.textContent = 'Criar conta';
-      return;
-    } else if (msgLower.includes('at least 6') || msgLower.includes('should be at least')) {
-      msgFinal = '❌ A senha deve ter pelo menos 6 caracteres.';
-    } else if (msgLower.includes('invalid format') || msgLower.includes('valid email')) {
-      msgFinal = '❌ Digite um e-mail válido.';
-    } else if (msgLower.includes('too many requests') || msgLower.includes('rate limit')) {
-      msgFinal = '⚠️ Muitas tentativas. Aguarde alguns minutos e tente novamente.';
-    } else {
-      msgFinal = '❌ Erro: ' + msg;
-    }
-
-    showLoginError(msgFinal);
-    btn.disabled = false;
-    btn.textContent = loginTab === 'entrar' ? 'Entrar' : 'Criar conta';
-  }
   }
 
   async function doReset() {

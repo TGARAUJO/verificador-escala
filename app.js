@@ -614,8 +614,8 @@
       }, 100);
       btn.disabled = false; btn.textContent = 'Criar conta';
       return;
-    } else if (m.includes('at least 6') || m.includes('should be at least')) {
-      texto = '❌ A senha deve ter pelo menos 6 caracteres.';
+    } else if (m.includes('at least 6') || m.includes('should be at least') || m.includes('at least 8')) {
+      texto = '❌ A senha deve ter pelo menos 8 caracteres e 1 caractere especial.';
     } else if (m.includes('invalid format') || m.includes('valid email')) {
       texto = '❌ Digite um e-mail válido.';
     } else if (m.includes('too many requests') || m.includes('rate limit')) {
@@ -636,7 +636,10 @@
 
     if (!email || !senha) { showLoginError('⚠️ Preencha e-mail e senha.'); return; }
     if (loginTab === 'criar' && senha !== confirma) { showLoginError('❌ As senhas não coincidem.'); return; }
-    if (loginTab === 'criar' && senha.length < 6)   { showLoginError('❌ A senha deve ter ao menos 6 caracteres.'); return; }
+    if (loginTab === 'criar' && senha.length < 8)   { showLoginError('❌ A senha deve ter pelo menos 8 caracteres.'); return; }
+    if (loginTab === 'criar' && !/[!@#$%^&*()_+\-=\[\]{};':"\|,.<>\/?]/.test(senha)) {
+      showLoginError('❌ A senha deve conter pelo menos 1 caractere especial (ex: @, #, !, %).'); return;
+    }
 
     btn.disabled = true;
     btn.textContent = loginTab === 'entrar' ? 'Entrando…' : 'Criando…';
@@ -645,6 +648,21 @@
 
     try {
       const client = supabase.createClient(SUPABASE_URL_FIXED, SUPABASE_KEY_FIXED, { auth: { persistSession: true } });
+
+      // Se for criar conta, valida primeiro se e-mail está autorizado
+      if (loginTab === 'criar') {
+        const { data: autorizado, error: errAuth } = await client
+          .from('usuarios_autorizados')
+          .select('email')
+          .eq('email', email)
+          .maybeSingle();
+
+        if (errAuth || !autorizado) {
+          showLoginError('❌ Este e-mail não está autorizado. Solicite acesso ao administrador.');
+          btn.disabled = false; btn.textContent = 'Criar conta';
+          return;
+        }
+      }
 
       let result;
       if (loginTab === 'entrar') {
@@ -871,6 +889,26 @@
       toast(`✅ ${email} removido com sucesso!`, 'success');
       await carregarUtilizadores();
     }
+  }
+
+  // ── Logout ────────────────────────────────────────────────────
+  async function logout() {
+    try {
+      const client = supabase.createClient(SUPABASE_URL_FIXED, SUPABASE_KEY_FIXED, { auth: { persistSession: true } });
+      await client.auth.signOut();
+    } catch(e) {}
+    document.getElementById('appShell').style.display = 'none';
+    document.getElementById('loginScreen').style.display = '';
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginSenha').value = '';
+    document.getElementById('loginConfirm').value = '';
+    document.getElementById('loginError').style.display = 'none';
+    document.getElementById('loginSuccess').style.display = 'none';
+    switchLoginTab('entrar');
+    supabaseClient = null;
+    colaboradores = [];
+    setDbStatus('', 'Não conectado');
+    toast('Sessão encerrada.', 'info');
   }
 
   // ── Service Worker (PWA) ───────────────────────────────────────

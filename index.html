@@ -1603,6 +1603,21 @@
       if (result.error) throw result.error;
 
       if (loginTab === 'criar') {
+        // Supabase retorna "sucesso" silencioso para e-mails duplicados quando
+        // confirmação de e-mail está ativa: identities vem como array vazio.
+        const identities = result.data?.user?.identities;
+        if (Array.isArray(identities) && identities.length === 0) {
+          // E-mail já cadastrado — redireciona para aba Entrar
+          switchLoginTab('entrar');
+          setTimeout(() => {
+            document.getElementById('loginEmail').value = email;
+            showLoginError('⚠️ Este e-mail já tem uma conta. Digite sua senha para entrar.');
+          }, 100);
+          btn.disabled = false;
+          btn.textContent = 'Criar conta';
+          return;
+        }
+
         if (result.data?.user && !result.data.session) {
           showLoginSuccess('✅ Conta criada com sucesso! Verifique seu e-mail para confirmar o cadastro antes de entrar.');
         } else if (result.data?.session) {

@@ -1566,12 +1566,14 @@
 
   function showLoginError(msg) {
     const el = document.getElementById('loginError');
-    el.textContent = msg; el.style.display = '';
+    el.textContent = msg; 
+    el.style.display = 'block'; // ← MUDOU AQUI: Agora força a aparecer
     document.getElementById('loginSuccess').style.display = 'none';
   }
   function showLoginSuccess(msg) {
     const el = document.getElementById('loginSuccess');
-    el.textContent = msg; el.style.display = '';
+    el.textContent = msg; 
+    el.style.display = 'block'; // ← MUDOU AQUI: Agora força a aparecer
     document.getElementById('loginError').style.display = 'none';
   }
 

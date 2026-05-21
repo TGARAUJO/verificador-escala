@@ -1600,14 +1600,18 @@
         result = await client.auth.signUp({ email, password: senha });
       }
 
-      if (result.error) throw result.error;
+      // Trata erro retornado no objeto result (sem throw)
+      if (result.error) {
+        const errMsg = result.error.message || result.error.error_description || JSON.stringify(result.error);
+        handleAuthError(errMsg, email, btn);
+        return;
+      }
 
       if (loginTab === 'criar') {
         // Supabase retorna "sucesso" silencioso para e-mails duplicados quando
         // confirmação de e-mail está ativa: identities vem como array vazio.
         const identities = result.data?.user?.identities;
         if (Array.isArray(identities) && identities.length === 0) {
-          // E-mail já cadastrado — redireciona para aba Entrar
           switchLoginTab('entrar');
           setTimeout(() => {
             document.getElementById('loginEmail').value = email;
@@ -1619,7 +1623,7 @@
         }
 
         if (result.data?.user && !result.data.session) {
-          showLoginSuccess('✅ Conta criada com sucesso! Verifique seu e-mail para confirmar o cadastro antes de entrar.');
+          showLoginSuccess('✅ Conta criada! Verifique seu e-mail para confirmar o cadastro antes de entrar.');
         } else if (result.data?.session) {
           showLoginSuccess('✅ Conta criada com sucesso! Você já pode entrar.');
           switchLoginTab('entrar');
@@ -1633,9 +1637,9 @@
       const emailUsuario = result.data?.user?.email || email;
       if (!EMAILS_AUTORIZADOS.includes(emailUsuario.toLowerCase())) {
         await supabase.createClient(SUPABASE_URL_FIXED, SUPABASE_KEY_FIXED, { auth: { persistSession: true } }).auth.signOut();
-        showLoginError('Acesso não autorizado. Entre em contato com o administrador.');
+        showLoginError('❌ Acesso não autorizado. Entre em contato com o administrador.');
         btn.disabled = false;
-        btn.textContent = loginTab === 'entrar' ? 'Entrar' : 'Criar conta';
+        btn.textContent = 'Entrar';
         return;
       }
 
@@ -1645,27 +1649,43 @@
       await conectarSupabase(true);
 
     } catch (err) {
-      const msgs = {
-        'Invalid login credentials': 'E-mail ou senha incorretos.',
-        'User already registered': '⚠️ Este e-mail já tem uma conta cadastrada. Clique em "Entrar" para fazer login.',
-        'Email not confirmed': '⚠️ E-mail ainda não confirmado. Verifique sua caixa de entrada (e o spam).',
-        'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres.',
-        'Unable to validate email address: invalid format': 'Digite um e-mail válido.',
-      };
-      // Detecta e-mail duplicado também por código
-      const msgFinal = msgs[err.message] ||
-        (err.message.toLowerCase().includes('already') ? '⚠️ Este e-mail já tem uma conta. Clique em "Entrar" para fazer login.' : err.message);
-      showLoginError(msgFinal);
-      if (err.message.includes('already') || err.message === 'User already registered') {
-        switchLoginTab('entrar');
-        setTimeout(() => {
-          document.getElementById('loginEmail').value = email;
-          showLoginError('⚠️ Este e-mail já tem uma conta. Digite sua senha para entrar.');
-        }, 100);
-      }
-      btn.disabled = false;
-      btn.textContent = loginTab === 'entrar' ? 'Entrar' : 'Criar conta';
+      const errMsg = err.message || err.error_description || JSON.stringify(err);
+      handleAuthError(errMsg, email, btn);
     }
+  }
+
+  function handleAuthError(errMsg, email, btn) {
+    const msg = errMsg || '';
+    const msgLower = msg.toLowerCase();
+
+    let msgFinal;
+    if (msgLower.includes('invalid login credentials') || msgLower.includes('invalid credentials') || msgLower.includes('invalid email or password') || msgLower.includes('wrong password')) {
+      msgFinal = '❌ E-mail ou senha incorretos. Verifique e tente novamente.';
+    } else if (msgLower.includes('email not confirmed')) {
+      msgFinal = '⚠️ E-mail ainda não confirmado. Verifique sua caixa de entrada (e o spam).';
+    } else if (msgLower.includes('already registered') || msgLower.includes('already') || msgLower.includes('user already')) {
+      switchLoginTab('entrar');
+      setTimeout(() => {
+        document.getElementById('loginEmail').value = email;
+        showLoginError('⚠️ Este e-mail já tem uma conta. Digite sua senha para entrar.');
+      }, 100);
+      btn.disabled = false;
+      btn.textContent = 'Criar conta';
+      return;
+    } else if (msgLower.includes('at least 6') || msgLower.includes('should be at least')) {
+      msgFinal = '❌ A senha deve ter pelo menos 6 caracteres.';
+    } else if (msgLower.includes('invalid format') || msgLower.includes('valid email')) {
+      msgFinal = '❌ Digite um e-mail válido.';
+    } else if (msgLower.includes('too many requests') || msgLower.includes('rate limit')) {
+      msgFinal = '⚠️ Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+    } else {
+      msgFinal = '❌ Erro: ' + msg;
+    }
+
+    showLoginError(msgFinal);
+    btn.disabled = false;
+    btn.textContent = loginTab === 'entrar' ? 'Entrar' : 'Criar conta';
+  }
   }
 
   async function doReset() {
